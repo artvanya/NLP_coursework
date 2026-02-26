@@ -32,7 +32,7 @@ np.random.seed(SEED)
 DATA_DIR    = os.path.join(os.path.dirname(__file__), '..')
 MODEL_NAME  = 'roberta-base'
 MAX_LENGTH  = 128
-BATCH_SIZE  = 16
+BATCH_SIZE  = 8
 EPOCHS      = 4
 LR          = 2e-5
 WARMUP_FRAC = 0.1       # fraction of total steps used for LR warmup
