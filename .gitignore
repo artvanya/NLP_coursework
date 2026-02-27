@@ -1,0 +1,2 @@
+# Large model checkpoint (keep locally, don't commit)
+BestModel/best_model.pt
