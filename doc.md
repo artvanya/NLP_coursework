@@ -17,11 +17,11 @@
 
 \subsection*{Exercise 1: Critical Review of \textit{Don't Patronize Me!}}
 
-This section reviews the paper by Perez-Almendros et al. (COLING 2020), which introduces the \textit{Don't Patronize Me!} dataset for detecting patronizing and condescending language (PCL) in news text.
+I reviewed the paper by Perez-Almendros et al. (COLING 2020) that introduces the Don't Patronize Me! dataset for detecting patronizing and condescending language (PCL) in news.
 
 \subsubsection*{Q1. Primary contributions of this work (2 marks)}
 
-The main contribution of this paper is the creation of a new NLP dataset for detecting patronizing and condescending language. The authors build a dataset of 10,637 news paragraphs taken from articles across 20 English-speaking countries, focusing on text about vulnerable communities (for example, refugees, homeless people, and poor families). This is an important contribution because PCL is much more subtle than hate speech or offensive language, and there were very few resources for studying it.
+The main contribution is a new dataset for PCL. They collect 10,637 news paragraphs from 20 English-speaking countries, focusing on text about vulnerable communities (refugees, homeless, poor families, etc.). That matters because PCL is subtler than hate speech and there wasn't much data for it before.
 
 A second major contribution is the annotation framework. The paper does not only label whether a paragraph contains PCL or not, but also provides a finer-grained category scheme for different types of PCL. This makes the dataset useful for both binary classification and more detailed analysis of how patronizing language is expressed.
 
@@ -31,7 +31,7 @@ The paper also contributes baseline experiments for the task. The authors compar
 
 One clear strength of the paper is that the problem is well motivated. The authors explain clearly why PCL matters and why it is different from other harmful language tasks. In particular, they show that PCL is often implicit and can sound positive on the surface, which makes it harder to detect and worth studying on its own.
 
-Another strength is the annotation design. The authors use expert annotators and include a referee annotator when there are major disagreements. They also use a two-stage process (first detecting PCL, then annotating spans and categories), which is a sensible way to handle a difficult and subjective task. I also think it is a strength that they openly discuss ambiguity instead of pretending the labels are always clear.
+Another strength is the annotation design. The authors use expert annotators and include a referee annotator when there are major disagreements. They also use a two-stage process (first detecting PCL, then annotating spans and categories), which is a sensible way to handle a difficult and subjective task. They're also upfront about ambiguity in the labels, which I think is a plus.
 
 The taxonomy is also a strong point. By defining different types of patronizing language and applying those labels in the dataset, the paper gives future researchers more than just a binary benchmark. This increases the long-term value of the resource.
 
@@ -47,7 +47,7 @@ The experimental section is useful, but still fairly limited. The baselines are 
 
 Some of the explanations in the analysis are reasonable, but not fully proven. For instance, the authors suggest that poor performance on certain categories is related to the need for world knowledge or common sense. That may be true, but the paper does not provide direct evidence for this claim, so it remains a plausible interpretation rather than a demonstrated result.
 
-Overall, I think the paper is still a strong and publishable contribution. The dataset and taxonomy are valuable, and the paper opens up an important NLP task. Its main limitations are mostly about annotation subjectivity and limited experimental depth, rather than a lack of usefulness.
+Overall the paper is a solid contribution — the dataset and taxonomy are useful and the task is important. The weaknesses are mostly about how subjective the labels are and that the experiments could have gone deeper, not that the work isn't useful.
 
 \subsection*{Exercise 2: Exploratory Data Analysis}
 
@@ -57,7 +57,7 @@ All analysis in this section is performed on the official training split (8,375 
 
 \begin{figure}[h]
     \centering
-    \includegraphics[width=\linewidth]{eda1_class_length.pdf}
+    \includegraphics[width=\linewidth]{figures/eda1_class_length.pdf}
     \caption{Class distribution (left) and word-count density per class (right) in the training split.}
     \label{fig:eda1}
 \end{figure}
@@ -77,30 +77,28 @@ PCL (1)    &   794 &  9.5\% & 53.5 & 47 \\
 
 \noindent
 \textbf{Analysis.}
-The dataset is heavily skewed: roughly 9 out of every 10 paragraphs carry no patronizing language, giving a positive-to-negative ratio of about 1:9.5. The word-count histograms show that both classes have broadly similar length profiles, with a slight tendency for PCL paragraphs to be a little longer (median 47 vs.\ 42 words). The vast majority of samples — 98.3\% — contain 128 words or fewer, and 99.9\% fit within 256 words.
+The data is very imbalanced: about 9 in 10 paragraphs are No-PCL, so the ratio is roughly 1:9.5. Length is similar in both classes; PCL paragraphs are slightly longer on average (median 47 vs 42 words). Almost all samples are under 256 words.
 
 \noindent
 \textbf{Impact on approach.}
-The class imbalance is significant enough that a model trained with a standard cross-entropy loss will tend to collapse towards predicting No-PCL, achieving around 90\% accuracy while completely missing the positive class. This makes the F1 score on the positive class a far more informative metric than accuracy, which is exactly what the shared-task evaluation uses. Practically, this means training must use class-weighted loss or oversampling of the PCL class. The length analysis also tells us that \texttt{max\_length=128} tokens is a safe default for the tokenizer — it covers nearly the entire dataset without padding-induced waste.
+With a standard loss the model would just predict No-PCL and get ~90\% accuracy while missing PCL entirely. So F1 on the positive class is the right metric (and that's what the task uses). I used a class-weighted loss and \texttt{max\_length}=256 so most paragraphs aren't truncated.
 
 \subsubsection*{EDA Technique 2: Discriminative Bigram Analysis}
 
 \begin{figure}[h]
     \centering
-    \includegraphics[width=\linewidth]{eda2_bigrams.pdf}
+    \includegraphics[width=\linewidth]{figures/eda2_bigrams.pdf}
     \caption{Top 15 bigrams by log-odds ratio for each class. Bars show how much more likely a bigram is in one class relative to the other.}
     \label{fig:eda2}
 \end{figure}
 
 \noindent
 \textbf{Analysis.}
-The log-odds ratio surfaces a striking contrast between the two classes. PCL-associated bigrams — ``less fortunate'', ``homeless person'', ``giving back'', ``better lives'', ``below poverty'' — are the kind of soft, sympathetic-sounding phrases that characterise patronising framing: the writer positions themselves as a benefactor and the subject as an object of pity. The No-PCL side is dominated by factual and political bigrams: ``illegal immigrants'', ``anti immigrant'', ``climate change'', ``trump administration'', ``refugee camp''. These are direct, neutral references to events and policies rather than evaluative statements about people.
-
-This asymmetry reveals something non-obvious: it is not the topic that makes language patronising (both classes talk about refugees, the homeless, and poverty) but the \emph{framing}. Highly charged political terms are, paradoxically, more associated with neutral reporting than with PCL.
+The log-odds ratio separates the two classes clearly. On the PCL side you get phrases like ``less fortunate'', ``homeless person'', ``giving back'', ``better lives'' — the kind of soft, sympathetic wording that can still be patronising. On the No-PCL side you get more factual/political bigrams: ``illegal immigrants'', ``climate change'', ``trump administration'', ``refugee camp''. So it's not the topic that makes something PCL (both sides talk about similar issues) but the \emph{framing}. Political or charged terms often show up in neutral reporting; the patronising stuff is in how people are described.
 
 \noindent
 \textbf{Impact on approach.}
-Because the discriminative signal lies in framing and subtle phrasing rather than in topic keywords, surface-level features will not generalise well. A bag-of-words or TF-IDF classifier would be partly misled — it might learn to associate topic words with No-PCL and softer vocabulary with PCL, but the same words can appear in both classes depending on context. This is a strong argument for using a pre-trained transformer that encodes broader sentence context rather than treating the paragraph as a bag of independent tokens. It also motivates using the seven fine-grained PCL category labels as auxiliary supervision: if the model learns to identify \emph{what kind} of PCL a paragraph contains, it should also improve at detecting whether any PCL is present.
+Because the signal is in framing rather than keywords, a bag-of-words style model would get confused — the same words can be PCL or not depending on context. So I used a transformer (RoBERTa) and added auxiliary supervision on the seven PCL categories so the model has to learn the \emph{type} of PCL, not just presence. That fits the idea that framing is what matters.
 
 \subsection*{Exercise 3: Proposed Approach}
 
@@ -115,7 +113,7 @@ The training set has 794 PCL and 7,581 No-PCL (ratio 1:9.5). I use \texttt{BCEWi
 The model has 8 outputs: logit\,0 for binary PCL, logits\,1--7 for the seven PCL categories in the dataset (Unbalanced power relations, Shallow solution, Presupposition, Authority voice, Metaphor, Compassion, The poorer the merrier). I train the binary head with the weighted BCE above and add a second BCE loss on the 7 category logits with per-category \texttt{pos\_weight}, scaled by 0.3. This pushes the encoder to learn the kind of PCL, not only whether it is present, which fits the EDA finding that framing matters more than topic.
 
 \textbf{3. Threshold tuning and two-stage training.}
-After stage 1 (train on train only, early stop on dev F1), I search the threshold in $[0.35, 0.65]$ on dev and pick the one that maximises PCL F1. Then in stage 2 I retrain from scratch on train+dev for the same number of epochs as the best epoch, save that model, and use it with the chosen threshold to produce \texttt{dev.txt} and \texttt{test.txt}.
+After stage 1 (train on train only, early stop on dev F1), I search the threshold in $[0.30, 0.70]$ on dev and pick the one that maximises PCL F1. Then in stage 2 I retrain from scratch on train+dev for the same number of epochs as the best epoch, save that model, and use it with the chosen threshold to produce \texttt{dev.txt} and \texttt{test.txt}.
 
 Rest of the setup: \texttt{max\_length}=256, AdamW, lr $2\!\times\!10^{-5}$, weight decay 0.01, batch size 16 with gradient accumulation 2 (effective 32), linear warmup 10\%, up to 8 epochs with patience 3.
 
@@ -132,23 +130,23 @@ Rest of the setup: \texttt{max\_length}=256, AdamW, lr $2\!\times\!10^{-5}$, wei
 
 \subsubsection*{Rationale and expected outcome}
 
-EDA showed strong class imbalance (weighted loss) and that discriminative signal is in framing rather than keywords (auxiliary loss on categories helps). Threshold tuning and retraining on train+dev are standard ways to use the dev set without leaking it into the model choice in stage 1. Dev F1 after threshold tuning (e.g. around 0.61 in a typical run) improves over the baseline 0.48; test performance is reported on the leaderboard.
+EDA showed strong class imbalance (weighted loss) and that discriminative signal is in framing rather than keywords (auxiliary loss on categories helps). Threshold tuning and retraining on train+dev are standard ways to use the dev set without leaking it into the model choice in stage 1. In my run, best epoch was 6, best threshold 0.69, dev F1 0.615 after tuning. Test performance will be on the leaderboard.
 
 \subsection*{Exercise 4: Model Training}
 
-The repository linked on the front page contains the training notebook and the \texttt{BestModel/} folder. The folder includes the submitted model and prediction files:
+The repo (link on the front page) has the notebook and a \texttt{BestModel/} folder. In \texttt{BestModel/} you'll find:
 
 \begin{itemize}
-    \item \texttt{final\_model\_roberta.pt} — weights of the model used for \texttt{dev.txt} and \texttt{test.txt} (stage 2: trained on train+dev)
+    \item \texttt{final\_model\_roberta.pt} — the model used to generate the predictions (trained on train+dev in stage 2)
     \item \texttt{dev.txt} — one prediction per line for the official dev set (2,094 lines; 0 = No PCL, 1 = PCL)
     \item \texttt{test.txt} — one prediction per line for the official test set (3,832 lines; 0 = No PCL, 1 = PCL)
 \end{itemize}
 
-The full training pipeline (data loaders, model, two-stage training, threshold tuning, saving predictions) is in \texttt{pcl\_roberta\_improved.ipynb} in the repository root. The repository must be made public after the submission deadline.
+The notebook \texttt{pcl\_roberta\_improved.ipynb} in the repo root has the full pipeline (data load, model, two-stage training, threshold tuning, writing the prediction files). Repo needs to be public after the deadline.
 
 \subsection*{Exercise 5.1: Global Evaluation}
 
-\texttt{dev.txt} and \texttt{test.txt} are in \texttt{BestModel/}. Format: one prediction (0 or 1) per line, matching the order of the official dev and test inputs. Dev set result (from a full run of the notebook):
+\texttt{dev.txt} and \texttt{test.txt} live in \texttt{BestModel/}. One prediction per line (0 or 1), same order as the official dev/test. Dev result from my run:
 
 \begin{center}
 \begin{tabular}{llll}
@@ -156,7 +154,7 @@ The full training pipeline (data loaders, model, two-stage training, threshold t
 Model & Dev F1 & Threshold & vs.\ baseline \\
 \midrule
 RoBERTa-base (baseline) & 0.48 & 0.50 & — \\
-Ours (RoBERTa + weighted BCE + auxiliary + threshold) & \textbf{0.614} & 0.54 & +0.13 \\
+Ours (RoBERTa + weighted BCE + auxiliary + threshold) & \textbf{0.615} & 0.69 & +0.14 \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -167,24 +165,24 @@ Test set results will appear on the leaderboard after the deadline.
 
 \subsubsection*{Error Analysis}
 
-\noindent\textbf{Confusion matrix (official dev set, 2,094 samples, threshold\,=\,0.54):}
+\noindent\textbf{Confusion matrix (official dev set, 2,094 samples, threshold\,=\,0.69):}
 
 \begin{center}
 \begin{tabular}{lcc}
 \toprule
  & Predicted No-PCL & Predicted PCL \\
 \midrule
-Actual No-PCL & 1,803 (TN) & 92 (FP) \\
-Actual PCL    & 70 (FN) & 129 (TP) \\
+Actual No-PCL & 1,808 (TN) & 87 (FP) \\
+Actual PCL    & 72 (FN) & 127 (TP) \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-\noindent So 70 of 199 PCL paragraphs are missed (recall on PCL $\approx$ 0.65) and 92 No-PCL are predicted as PCL (precision on PCL $\approx$ 0.58). The model no longer collapses to No-PCL thanks to the weighted loss, but many errors remain where the boundary is ambiguous.
+\noindent So 72 of 199 PCL paragraphs are missed (recall on PCL 0.64) and 87 No-PCL are predicted as PCL (precision on PCL 0.59). The weighted loss stops the model collapsing to No-PCL; the rest of the errors are mostly borderline cases.
 
 \vspace{0.5em}
 \noindent\textbf{False negatives — PCL the model missed.}
-Among the false negatives a consistent pattern: these are cases where the PCL is implicit in the author's \emph{attitude} rather than explicit in the vocabulary.
+Among the false negatives there's a consistent pattern: the PCL is in the author's \emph{attitude} rather than in the words themselves.
 
 \begin{quote}
 \textit{``His present `chambers' may be quite humble, but Shiyani has the tiny space very neatly organized and clean. Many people pass him by but do not manage to see him...''} [par\_id 107]
@@ -202,7 +200,7 @@ These false negatives share a key property: they require the reader to infer the
 
 \vspace{0.5em}
 \noindent\textbf{False positives — No-PCL predicted as PCL.}
-Among the false positives a different pattern: the model fires on vocabulary associated with vulnerable groups even when the framing is neutral or sympathetic without being condescending.
+The false positives are different: the model often fires on vocabulary about vulnerable groups even when the sentence isn't actually condescending.
 
 \begin{quote}
 \textit{``His friends at the Chevron want people to know he wasn't just a faceless homeless person. He was their friend and their family.''} [par\_id 8591]
@@ -217,15 +215,15 @@ This sentence contains ``homeless person'' — a strong PCL bigram from EDA Tech
 This is a first-person statement by a member of the community being discussed. There is no outside observer adopting a patronising stance; the speaker is speaking for and about their own community. The model cannot distinguish internal community voice from external characterisation, which is a significant limitation.
 
 \vspace{0.5em}
-\noindent\textbf{Summary of error patterns.}
-Two main failure modes emerge: (1) \emph{implicit-stance false negatives}, where PCL requires inferring author attitude from pragmatic context rather than surface vocabulary; and (2) \emph{keyword-trigger false positives}, where the model associates vulnerable-group vocabulary with PCL regardless of whether the framing is actually condescending. Both errors reflect the fundamental difficulty identified in the EDA: PCL is defined by framing, not topic, and framing is much harder to model.
+\noindent\textbf{Summary.}
+So two kinds of mistakes: missing PCL when it's only in the attitude (no clear keywords), and flagging PCL when the wording is about vulnerable groups but the sentence isn't actually patronising. Both come back to the same thing — the EDA showed that framing matters more than topic, and that's the hard part to get right.
 
 \subsubsection*{Other Local Evaluation: Threshold and Confidence Analysis}
 
 \noindent\textbf{Threshold sensitivity.}
-The threshold search is restricted to $[0.35, 0.65]$ so the chosen value generalises better to test. In a typical run the best dev F1 is reached around $t \approx 0.54$. Lower $t$ increases recall and lowers precision; higher $t$ does the opposite. The chosen threshold balances the two for F1.
+I search over $[0.30, 0.70]$ so the optimum isn't at the extremes. In my run the best was $t = 0.69$, which gave dev F1 0.615. Lower $t$ pushes recall up and precision down; higher $t$ the reverse. So 0.69 is a bit on the conservative side (fewer PCL predictions, higher precision on PCL).
 
 \noindent\textbf{What would help next.}
-The errors point to two gaps: (1) implicit or pragmatic PCL that is not signalled by clear keywords, and (2) over-reaction to phrases about vulnerable groups even when the sentence is not patronising. Addressing (1) would need extra signal (e.g. rationale or stance); addressing (2) would need better use of negation and context. Both are beyond this coursework.
+To fix the missed PCL you'd want something that picks up on stance or pragmatics, not just wording. To cut the false positives you'd need the model to use negation and context better (e.g. ``wasn't just a faceless homeless person''). I didn't try that here.
 
 \end{document}

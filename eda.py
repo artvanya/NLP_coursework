@@ -7,6 +7,9 @@ from collections import Counter
 import re
 import os
 
+FIG_DIR = 'figures'
+os.makedirs(FIG_DIR, exist_ok=True)
+
 # ---------- Load and merge data ----------
 rows = []
 with open('dontpatronizeme_pcl.tsv', 'r', encoding='utf-8') as f:
@@ -84,9 +87,9 @@ axes[1].legend(fontsize=8.5, framealpha=0.7)
 axes[1].spines[['top', 'right']].set_visible(False)
 
 fig.suptitle('EDA 1 – Class Imbalance and Text Length', fontsize=13, y=1.01, fontweight='bold')
-fig.savefig('eda1_class_length.pdf', bbox_inches='tight', dpi=150)
-fig.savefig('eda1_class_length.png', bbox_inches='tight', dpi=150)
-print("\nSaved eda1_class_length.pdf/.png")
+fig.savefig(os.path.join(FIG_DIR, 'eda1_class_length.pdf'), bbox_inches='tight', dpi=150)
+fig.savefig(os.path.join(FIG_DIR, 'eda1_class_length.png'), bbox_inches='tight', dpi=150)
+print(f"\nSaved {FIG_DIR}/eda1_class_length.pdf and .png")
 plt.close()
 
 
@@ -161,7 +164,7 @@ make_bar(axes[0], top_pcl,  '#DD8452', '(a) Most PCL-associated bigrams')
 make_bar(axes[1], top_npcl, '#4C72B0', '(b) Most No-PCL-associated bigrams')
 
 fig.suptitle('EDA 2 – Discriminative Bigrams per Class (Log-Odds Ratio)', fontsize=13, y=1.01, fontweight='bold')
-fig.savefig('eda2_bigrams.pdf', bbox_inches='tight', dpi=150)
-fig.savefig('eda2_bigrams.png', bbox_inches='tight', dpi=150)
-print("\nSaved eda2_bigrams.pdf/.png")
+fig.savefig(os.path.join(FIG_DIR, 'eda2_bigrams.pdf'), bbox_inches='tight', dpi=150)
+fig.savefig(os.path.join(FIG_DIR, 'eda2_bigrams.png'), bbox_inches='tight', dpi=150)
+print(f"\nSaved {FIG_DIR}/eda2_bigrams.pdf and .png")
 plt.close()
