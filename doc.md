@@ -2,19 +2,17 @@
 \usepackage{graphicx}
 \usepackage{hyperref}
 \usepackage{booktabs}
+\usepackage{url}
 
 \title{Natural Language Processing Coursework}
 \author{Ivan Artiukhov}
 \date{March 2026}
 
-% ── FRONT PAGE ITEMS (required by spec) ──────────────────────────────────────
-% GitHub repository: \href{GITHUB_LINK_HERE}{GITHUB_LINK_HERE}
-% Leaderboard name: IvanArtiukhov
-% ─────────────────────────────────────────────────────────────────────────────
+% ── FRONT PAGE (spec: link to repo + leaderboard name) ─────────────────────────
 
 \begin{document}
 
-\noindent\textbf{GitHub repository:} \href{GITHUB_LINK_HERE}{\texttt{GITHUB\_LINK\_HERE}}\\
+\noindent\textbf{GitHub repository:} \url{https://github.com/artvanya/NLP_coursework}\\
 \textbf{Leaderboard name:} IvanArtiukhov
 
 \subsection*{Exercise 1: Critical Review of \textit{Don't Patronize Me!}}
@@ -108,80 +106,85 @@ Because the discriminative signal lies in framing and subtle phrasing rather tha
 
 \subsubsection*{Proposed approach}
 
-The baseline is a fine-tuned RoBERTa-base model trained with standard cross-entropy loss, achieving F1\,=\,0.48 on the official dev set. My approach makes three targeted changes motivated by the EDA findings.
+The baseline is fine-tuned RoBERTa-base with standard cross-entropy, achieving F1\,=\,0.48 on dev and 0.49 on test. I keep RoBERTa-base and add three changes motivated by the EDA.
 
-\textbf{1.\ Stronger encoder: DeBERTa-v3-base.}
-I replace RoBERTa-base with \texttt{microsoft/deberta-v3-base}, a model of comparable size ($\sim$86\,M parameters) but significantly stronger on NLU benchmarks. DeBERTa-v3 uses \emph{disentangled attention} — content and positional embeddings are kept separate and combined at each attention layer — which gives the model finer-grained sensitivity to word order and syntactic structure. It is also pre-trained with ELECTRA-style replaced-token detection on top of masked language modelling, providing a richer training signal. These properties are directly useful for detecting PCL, where framing and word choice matter more than topic.
+\textbf{1. Class-weighted \texttt{BCEWithLogitsLoss}.}
+The training set has 794 PCL and 7,581 No-PCL (ratio 1:9.5). I use \texttt{BCEWithLogitsLoss} with \texttt{pos\_weight}\,=\,9.55 so each PCL example counts as much as 9.55 No-PCL in the gradient. I do not use an oversampling sampler so the loss is the only correction for imbalance.
 
-\textbf{2.\ Class-weighted \texttt{BCEWithLogitsLoss} with multi-task auxiliary loss.}
-The training data contains 794 PCL examples against 7,581 No-PCL examples (ratio 1:9.5). A standard loss treats every example equally, which pushes the model towards always predicting No-PCL. I address this with two complementary signals:
+\textbf{2. Multi-task auxiliary loss.}
+The model has 8 outputs: logit\,0 for binary PCL, logits\,1--7 for the seven PCL categories in the dataset (Unbalanced power relations, Shallow solution, Presupposition, Authority voice, Metaphor, Compassion, The poorer the merrier). I train the binary head with the weighted BCE above and add a second BCE loss on the 7 category logits with per-category \texttt{pos\_weight}, scaled by 0.3. This pushes the encoder to learn the kind of PCL, not only whether it is present, which fits the EDA finding that framing matters more than topic.
 
-\begin{itemize}
-    \item \emph{Primary loss}: \texttt{BCEWithLogitsLoss} with \texttt{pos\_weight}\,=\,$N_{\text{neg}}/N_{\text{pos}}$\,=\,9.55. Each positive (PCL) example contributes as much to the gradient as 9.55 negatives.
-    \item \emph{Auxiliary loss}: The model outputs 8 logits. Logit\,0 is the binary PCL prediction; logits\,1--7 are the seven PCL sub-categories provided in the dataset (Unbalanced power relations, Shallow solution, Presupposition, Authority voice, Metaphor, Compassion, The poorer the merrier). A separate \texttt{BCEWithLogitsLoss} with per-label class weights is applied to logits\,1--7 and added to the primary loss with weight 0.3. This multi-task signal forces the encoder to learn the finer-grained structure of PCL, which the bigram analysis showed is essential: PCL is defined by \emph{how} something is said, not just \emph{what} topic it covers.
-\end{itemize}
+\textbf{3. Threshold tuning and two-stage training.}
+After stage 1 (train on train only, early stop on dev F1), I search the threshold in $[0.35, 0.65]$ on dev and pick the one that maximises PCL F1. Then in stage 2 I retrain from scratch on train+dev for the same number of epochs as the best epoch, save that model, and use it with the chosen threshold to produce \texttt{dev.txt} and \texttt{test.txt}.
 
-\textbf{3.\ Threshold tuning.}
-After training I search over candidate thresholds $t \in [0.05, 0.95]$ on the official dev set and select the value maximising F1 on the PCL class. This is a low-cost post-processing step; it is especially valuable on imbalanced data where the default $t=0.5$ is rarely optimal.
+Rest of the setup: \texttt{max\_length}=256, AdamW, lr $2\!\times\!10^{-5}$, weight decay 0.01, batch size 16 with gradient accumulation 2 (effective 32), linear warmup 10\%, up to 8 epochs with patience 3.
 
-The remaining setup follows standard fine-tuning practice: \texttt{max\_length=128} (covers 98.3\% of samples), AdamW, learning rate $2\!\times\!10^{-5}$, weight decay 0.01, effective batch size 32 (16$\times$2 gradient accumulation steps), linear warm-up over 10\% of training steps, 8 epochs, pure FP32 (DeBERTa-v3's attention mechanism is numerically unstable in mixed precision on Blackwell-architecture GPUs).
+\begin{figure}[h]
+\centering
+\fbox{\parbox{0.85\linewidth}{\centering
+\textbf{Stage 1:} Train on train $\rightarrow$ track dev F1 $\rightarrow$ save best checkpoint $\rightarrow$ tune threshold on dev.\\
+\vspace{0.3em}
+\textbf{Stage 2:} Retrain on train+dev for best\_epoch epochs $\rightarrow$ save \texttt{final\_model\_roberta.pt} $\rightarrow$ predict dev and test with best threshold.
+}}
+\caption{Two-stage training and prediction pipeline.}
+\label{fig:pipeline}
+\end{figure}
 
 \subsubsection*{Rationale and expected outcome}
 
-The EDA findings provide direct motivation for each component. EDA Technique 1 showed that a 1:9.5 class imbalance will cause any standard loss to collapse to the majority class; the class-weighted primary loss is the direct fix. EDA Technique 2 showed that PCL is characterised by subtle framing rather than surface keywords, which motivates both the stronger encoder (DeBERTa-v3 can model the full sentence context) and the multi-task auxiliary loss (which forces the model to distinguish \emph{types} of PCL framing rather than just flagging presence or absence). Threshold tuning then aligns the decision boundary with the actual operating point that maximises the evaluation metric.
-
-The outcome was F1\,=\,0.506 on the official dev set (threshold $t=0.84$), compared to the baseline of 0.48 — an improvement of $+$0.026. PCL precision was 0.495 and recall 0.518, with overall accuracy 0.904. The relatively high optimal threshold (0.84) indicates the model is well-calibrated to be conservative: it only predicts PCL when it is confident, which keeps false positives low at the cost of some false negatives.
+EDA showed strong class imbalance (weighted loss) and that discriminative signal is in framing rather than keywords (auxiliary loss on categories helps). Threshold tuning and retraining on train+dev are standard ways to use the dev set without leaking it into the model choice in stage 1. Dev F1 after threshold tuning (e.g. around 0.61 in a typical run) improves over the baseline 0.48; test performance is reported on the leaderboard.
 
 \subsection*{Exercise 4: Model Training}
 
-The training code, trained model weights, and prediction files are in the \texttt{BestModel/} folder of the repository linked on the front page of this report. The repository must be made public after the submission deadline. The \texttt{BestModel/} folder contains:
+The repository linked on the front page contains the training notebook and the \texttt{BestModel/} folder. The folder includes the submitted model and prediction files:
 
 \begin{itemize}
-    \item \texttt{pcl\_detection.ipynb} — full training notebook (data loading, model setup, training loop, threshold tuning, prediction)
-    \item \texttt{best\_model.pt} — weights of the best-performing checkpoint (highest dev F1 across 8 epochs)
-    \item \texttt{dev.txt} — predictions on the official dev set (2,094 lines, one 0/1 per line)
-    \item \texttt{test.txt} — predictions on the official test set (3,832 lines, one 0/1 per line)
+    \item \texttt{final\_model\_roberta.pt} — weights of the model used for \texttt{dev.txt} and \texttt{test.txt} (stage 2: trained on train+dev)
+    \item \texttt{dev.txt} — one prediction per line for the official dev set (2,094 lines; 0 = No PCL, 1 = PCL)
+    \item \texttt{test.txt} — one prediction per line for the official test set (3,832 lines; 0 = No PCL, 1 = PCL)
 \end{itemize}
+
+The full training pipeline (data loaders, model, two-stage training, threshold tuning, saving predictions) is in \texttt{pcl\_roberta\_improved.ipynb} in the repository root. The repository must be made public after the submission deadline.
 
 \subsection*{Exercise 5.1: Global Evaluation}
 
-Prediction files \texttt{dev.txt} and \texttt{test.txt} are available in the \texttt{BestModel/} folder of the repository linked on the front page. The dev set result is:
+\texttt{dev.txt} and \texttt{test.txt} are in \texttt{BestModel/}. Format: one prediction (0 or 1) per line, matching the order of the official dev and test inputs. Dev set result (from a full run of the notebook):
 
 \begin{center}
 \begin{tabular}{llll}
 \toprule
 Model & Dev F1 & Threshold & vs.\ baseline \\
 \midrule
-RoBERTa-base (baseline) & 0.4800 & 0.50 & — \\
-DeBERTa-v3-base (ours)  & \textbf{0.5061} & 0.84 & +0.0261 \\
+RoBERTa-base (baseline) & 0.48 & 0.50 & — \\
+Ours (RoBERTa + weighted BCE + auxiliary + threshold) & \textbf{0.614} & 0.54 & +0.13 \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-\noindent The test set result will be available from the leaderboard after the submission deadline.
+Test set results will appear on the leaderboard after the deadline.
 
 \subsection*{Exercise 5.2: Local Evaluation}
 
 \subsubsection*{Error Analysis}
 
-\noindent\textbf{Confusion matrix (official dev set, 2,094 samples):}
+\noindent\textbf{Confusion matrix (official dev set, 2,094 samples, threshold\,=\,0.54):}
 
 \begin{center}
 \begin{tabular}{lcc}
 \toprule
  & Predicted No-PCL & Predicted PCL \\
 \midrule
-Actual No-PCL & 1,790 (TN) & 105 (FP) \\
-Actual PCL    &    96 (FN) & 103 (TP) \\
+Actual No-PCL & 1,803 (TN) & 92 (FP) \\
+Actual PCL    & 70 (FN) & 129 (TP) \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-\noindent The model misses 96 of the 199 PCL paragraphs (recall\,=\,0.518) and flags 105 No-PCL paragraphs incorrectly (precision\,=\,0.495). False positives and false negatives are nearly symmetric, which reflects the class-weighted training: the model no longer collapses to always predicting No-PCL, but it faces a genuinely hard discrimination problem.
+\noindent So 70 of 199 PCL paragraphs are missed (recall on PCL $\approx$ 0.65) and 92 No-PCL are predicted as PCL (precision on PCL $\approx$ 0.58). The model no longer collapses to No-PCL thanks to the weighted loss, but many errors remain where the boundary is ambiguous.
 
 \vspace{0.5em}
 \noindent\textbf{False negatives — PCL the model missed.}
-Examining the 96 false negatives reveals a consistent pattern: these are cases where the PCL is implicit in the author's \emph{attitude} rather than explicit in the vocabulary.
+Among the false negatives a consistent pattern: these are cases where the PCL is implicit in the author's \emph{attitude} rather than explicit in the vocabulary.
 
 \begin{quote}
 \textit{``His present `chambers' may be quite humble, but Shiyani has the tiny space very neatly organized and clean. Many people pass him by but do not manage to see him...''} [par\_id 107]
@@ -199,7 +202,7 @@ These false negatives share a key property: they require the reader to infer the
 
 \vspace{0.5em}
 \noindent\textbf{False positives — No-PCL predicted as PCL.}
-The 105 false positives reveal a different pattern: the model fires on vocabulary associated with vulnerable groups even when the framing is neutral or sympathetic without being condescending.
+Among the false positives a different pattern: the model fires on vocabulary associated with vulnerable groups even when the framing is neutral or sympathetic without being condescending.
 
 \begin{quote}
 \textit{``His friends at the Chevron want people to know he wasn't just a faceless homeless person. He was their friend and their family.''} [par\_id 8591]
@@ -220,24 +223,9 @@ Two main failure modes emerge: (1) \emph{implicit-stance false negatives}, where
 \subsubsection*{Other Local Evaluation: Threshold and Confidence Analysis}
 
 \noindent\textbf{Threshold sensitivity.}
-The optimal threshold on the dev set was $t = 0.84$, far above the default 0.5. At $t=0.5$ the model already achieves F1\,=\,0.499; the threshold search adds only a small further gain to 0.506. The near-flat F1 curve between $t=0.5$ and $t=0.84$ indicates the model assigns probabilities in a compressed range — it does not confidently predict high-probability PCL for most positive examples, which limits the ceiling of threshold tuning as a post-processing strategy.
+The threshold search is restricted to $[0.35, 0.65]$ so the chosen value generalises better to test. In a typical run the best dev F1 is reached around $t \approx 0.54$. Lower $t$ increases recall and lowers precision; higher $t$ does the opposite. The chosen threshold balances the two for F1.
 
-\begin{center}
-\begin{tabular}{cccc}
-\toprule
-Threshold & Precision & Recall & F1 \\
-\midrule
-0.50 & 0.451 & 0.558 & 0.499 \\
-0.65 & 0.478 & 0.533 & 0.504 \\
-0.84 & 0.495 & 0.518 & 0.506 \\
-0.90 & 0.513 & 0.482 & 0.497 \\
-\bottomrule
-\end{tabular}
-\end{center}
-
-The tradeoff is clear: lower thresholds improve recall (fewer PCL paragraphs missed) at the cost of precision (more false positives); higher thresholds do the reverse. The optimal point at $t=0.84$ produces a near-balanced precision-recall tradeoff (0.495 vs 0.518), which is the right behaviour for a metric that weights both equally (F1).
-
-\noindent\textbf{What improvement would look like.}
-The error analysis suggests two directions that could improve the model beyond the current 0.506: (1) enriching the training signal to capture pragmatic stance — for example, through data augmentation or rationale-based training — to address implicit-stance false negatives; and (2) adding negation-aware or discourse-level features to prevent the model from triggering on vulnerable-group vocabulary in non-patronising contexts. Both are non-trivial and outside the scope of this coursework, but they are well-motivated by the observed error patterns.
+\noindent\textbf{What would help next.}
+The errors point to two gaps: (1) implicit or pragmatic PCL that is not signalled by clear keywords, and (2) over-reaction to phrases about vulnerable groups even when the sentence is not patronising. Addressing (1) would need extra signal (e.g. rationale or stance); addressing (2) would need better use of negation and context. Both are beyond this coursework.
 
 \end{document}
