@@ -12,7 +12,7 @@ os.makedirs(FIG_DIR, exist_ok=True)
 
 # ---------- Load and merge data ----------
 rows = []
-with open('dontpatronizeme_pcl.tsv', 'r', encoding='utf-8') as f:
+with open('data/dontpatronizeme_pcl.tsv', 'r', encoding='utf-8') as f:
     for line in f:
         parts = line.rstrip('\n').split('\t', 5)
         if len(parts) == 6 and parts[0].strip().isdigit():
@@ -29,7 +29,7 @@ df = pd.DataFrame(rows)
 df['label'] = (df['label_raw'] >= 2).astype(int)
 
 # Restrict to train split
-train_ids = set(pd.read_csv('train_semeval_parids-labels.csv')['par_id'])
+train_ids = set(pd.read_csv('data/train_semeval_parids-labels.csv')['par_id'])
 df = df[df['par_id'].isin(train_ids)].reset_index(drop=True)
 
 df['word_count'] = df['text'].apply(lambda t: len(t.split()))
