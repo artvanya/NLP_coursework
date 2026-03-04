@@ -1,9 +1,3 @@
-# Large model checkpoints (optional: omit to keep repo smaller; spec says push best model)
-# BestModel/*.pt
-
-# Test labels — do NOT commit (you are not supposed to have/use these for submission)
 PCL_testlabels_binary.txt
-
-# Local / generated (optional)
 BestModel/test_probs_seed*.npy
 BestModel/test_t05.txt
