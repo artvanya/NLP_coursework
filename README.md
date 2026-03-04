@@ -1,6 +1,6 @@
 # PCL detection (NLP coursework)
 
-Coursework for the SemEval 2022 Task 4 (subtask 1): binary classification of patronising and condescending language (PCL) in news text. Baseline was RoBERTa-base at 0.48 dev / 0.49 test F1.
+Natural Language Processing Coursework: binary classification of patronising and condescending language (PCL) in news text. Baseline was RoBERTa-base at 0.48 dev / 0.49 test F1.
 
 ## What's in this repo
 
