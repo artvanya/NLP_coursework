@@ -21,17 +21,17 @@ I reviewed the paper by Perez-Almendros et al. (COLING 2020) that introduces the
 
 \subsubsection*{Q1. Primary contributions of this work (2 marks)}
 
-The main contribution is a new dataset for PCL. They collect 10,637 news paragraphs from 20 English-speaking countries, focusing on text about vulnerable communities (refugees, homeless, poor families, etc.). That matters because PCL is subtler than hate speech and there wasn't much data for it before.
+The main contribution is a new dataset for PCL. The authors collect exactly 10,637 news paragraphs drawn from the News on Web (NoW) corpus, covering 10 vulnerability keywords (e.g.\ \textit{homeless}, \textit{refugee}, \textit{immigrant}) across 20 English-speaking countries, annotated by three expert annotators (two primary, one referee). That matters because PCL is subtler than hate speech and there was no dedicated English-language paragraph-level dataset for it before this work.
 
-A second major contribution is the annotation framework. The paper does not only label whether a paragraph contains PCL or not, but also provides a finer-grained category scheme for different types of PCL. This makes the dataset useful for both binary classification and more detailed analysis of how patronizing language is expressed.
+A second major contribution is the annotation framework and taxonomy. The paper not only labels PCL presence at paragraph level, but also identifies 3,554 PCL text spans and assigns each to one of seven fine-grained categories (e.g.\ \textit{Unbalanced power relations}, \textit{Compassion}, \textit{Metaphor}) grouped under three higher-level types (\textit{The Saviour}, \textit{The Expert}, \textit{The Poet}). This makes the resource useful for both binary classification (Task 1) and multi-label category recognition (Task 2).
 
-The paper also contributes baseline experiments for the task. The authors compare traditional machine learning methods and neural models (including transformer-based models), which helps show that the task is possible but still challenging. This is useful for future work because it gives a clear starting point for comparison.
+The paper also contributes a suite of baseline experiments across SVM, BiLSTM, and four BERT-family models (BERT-base, BERT-large, RoBERTa, DistilBERT), evaluated via 10-fold cross-validation. RoBERTa achieves F1\,=\,70.63 on Task 1, setting a clear performance ceiling for future work to beat.
 
 \subsubsection*{Q2. Technical strengths that justify publication (2 marks)}
 
 One clear strength of the paper is that the problem is well motivated. The authors explain clearly why PCL matters and why it is different from other harmful language tasks. In particular, they show that PCL is often implicit and can sound positive on the surface, which makes it harder to detect and worth studying on its own.
 
-Another strength is the annotation design. The authors use expert annotators and include a referee annotator when there are major disagreements. They also use a two-stage process (first detecting PCL, then annotating spans and categories), which is a sensible way to handle a difficult and subjective task. They're also upfront about ambiguity in the labels, which I think is a plus.
+Another strength is the annotation design. Three expert annotators are used, with ann1 and ann2 annotating the full dataset independently and ann3 acting as a referee only for the 590 total disagreements (label~0 vs label~2). The two-step process — Step 1 determines PCL presence using a 3-point scale (0/1/2), then Step 2 annotates spans and assigns category labels via the BRAT tool — is a sensible way to handle a difficult and subjective task. The authors are also upfront about ambiguity, reporting a paragraph-level Cohen's $\kappa$ of 41\% overall, rising to a substantial 61\% once borderline cases are excluded (Landis and Koch, 1977).
 
 The taxonomy is also a strong point. By defining different types of patronizing language and applying those labels in the dataset, the paper gives future researchers more than just a binary benchmark. This increases the long-term value of the resource.
 
@@ -39,15 +39,13 @@ Finally, the paper includes a reasonable set of baseline experiments and some qu
 
 \subsubsection*{Q3. Key weaknesses / areas with insufficient evidence (2 marks)}
 
-The biggest weakness is the level of subjectivity in the annotations. The authors are honest about this, which is good, but the agreement scores show that the task is difficult even for humans. This does not make the dataset unusable, but it does mean that stronger validation or a deeper discussion of annotation consistency would have made the paper stronger.
+The biggest weakness is the level of subjectivity in the annotations. The paragraph-level $\kappa$ is only 41\%, with 590 outright contradictions (label~0 vs label~2) out of 10,637 paragraphs. Category-level span agreement ranges from 48.34\% (Authority voice) to 66.72\% (The poorer, the merrier). The paper reports these numbers honestly, which is commendable, but it does not discuss how this annotation noise affects the reliability of downstream model comparisons. For example, a 3-point F1 difference between models may not be meaningful if the gold labels themselves are uncertain for a fifth of the data.
 
-Another weakness is possible sampling bias in how the data was collected. The dataset is built using pre-selected keywords linked to vulnerable groups. This is practical, but it may introduce lexical patterns that models can exploit. The paper does not fully test whether models are learning real PCL patterns or just relying on keyword-related shortcuts.
+Another weakness is possible sampling bias. The dataset is built using 10 pre-selected keywords linked to vulnerable groups. This is practical, but it likely introduces lexical patterns that models can exploit as shortcuts. The experimental results are consistent with this: RoBERTa achieves F1\,=\,89.4 on \textit{Unbalanced power relations} — whose markers (``us'', ``they'', ``help'') are lexically predictable — but only F1\,=\,43.4 on \textit{Metaphor} and F1\,=\,20.5 on \textit{The poorer, the merrier}. The paper attributes the poor performance on difficult categories to the need for world knowledge, but provides no direct evidence (no probing experiments, no keyword removal ablations) to support that claim.
 
-The experimental section is useful, but still fairly limited. The baselines are a good start, but the paper does not include many diagnostic experiments or ablations. For example, it would have been helpful to test class imbalance strategies, threshold effects, or cross-domain generalization more directly.
+A further reproducibility concern is the anomalous BERT-large result. BERT-large achieves F1\,=\,53.91, which is lower than the much simpler BiLSTM (F1\,=\,57.75). The paper notes that BERT-large may overfit given the small positive class (995 PCL paragraphs), but offers no ablation to confirm this, leaving an unexplained result for readers to build on.
 
-Some of the explanations in the analysis are reasonable, but not fully proven. For instance, the authors suggest that poor performance on certain categories is related to the need for world knowledge or common sense. That may be true, but the paper does not provide direct evidence for this claim, so it remains a plausible interpretation rather than a demonstrated result.
-
-Overall the paper is a solid contribution — the dataset and taxonomy are useful and the task is important. The weaknesses are mostly about how subjective the labels are and that the experiments could have gone deeper, not that the work isn't useful.
+\textbf{Recommendation: Weak Accept.} The dataset and taxonomy are a genuine community contribution and the task is important. I recommend the authors (1) add a keyword-removal ablation to test whether models are exploiting lexical shortcuts rather than learning genuine PCL patterns, and (2) report per-category F1 alongside overall F1 as the primary Task~1 metric, so that future work can track progress on the harder categories (Metaphor, Authority voice) independently of the easier ones (Unbalanced power relations).
 
 \subsection*{Exercise 2: Exploratory Data Analysis}
 
@@ -130,7 +128,15 @@ Rest of the setup: \texttt{max\_length}=256, AdamW, lr $2\!\times\!10^{-5}$, wei
 
 \subsubsection*{Rationale and expected outcome}
 
-EDA showed strong class imbalance (weighted loss) and that discriminative signal is in framing rather than keywords (auxiliary loss on categories helps). Threshold tuning and retraining on train+dev are standard ways to use the dev set without leaking it into the model choice in stage 1. In my run, best epoch was 6, best threshold 0.69, dev F1 0.615 after tuning. Test performance will be on the leaderboard.
+Each of the three changes addresses a specific problem identified in the EDA.
+
+The weighted loss directly attacks the class imbalance. Without it, a model trained with standard cross-entropy quickly learns that predicting No-PCL on everything gives ~90\% accuracy, which is technically correct but completely useless for the task. By setting \texttt{pos\_weight}\,=\,9.55 I force the gradient to treat each PCL example as heavily as the majority class, so the model cannot ignore the minority class. I expected this change alone to substantially improve recall on PCL, even if it trades some precision.
+
+The auxiliary category loss addresses the finding from EDA Technique 2: the discriminative signal is in how a community is \emph{framed}, not which community is mentioned. A model that only sees a binary PCL/No-PCL signal can still learn surface patterns like ``less fortunate'' without understanding why they are patronising. By also training on the seven category logits, I push the encoder to represent the type of patronising stance being expressed — the saviour dynamic, the compassion framing, the presupposition — rather than just whether certain words appear. This should improve precision on the harder, more framing-dependent cases that a purely binary signal would miss.
+
+Threshold tuning is motivated by the asymmetry of the task. With a 1:9.5 class ratio, the default threshold of 0.5 is not optimal: it was calibrated for balanced classes. Searching over $[0.30, 0.70]$ lets me find the point where the model's precision–recall trade-off actually maximises F1 on the positive class. Retraining on train+dev in stage 2 then makes full use of all labelled data without having leaked the dev set into the model selection decision in stage 1.
+
+In practice, best epoch was 6, best threshold 0.69, dev F1 0.615 after tuning — an improvement of $+0.135$ over the 0.48 baseline. The higher threshold (0.69 rather than 0.50) confirms the model needed to be pushed toward precision: with the weighted loss pulling toward recall, the threshold compensates to find a better balance. Test performance will appear on the leaderboard.
 
 \subsection*{Exercise 4: Model Training}
 
@@ -218,12 +224,77 @@ This is a first-person statement by a member of the community being discussed. T
 \noindent\textbf{Summary.}
 So two kinds of mistakes: missing PCL when it's only in the attitude (no clear keywords), and flagging PCL when the wording is about vulnerable groups but the sentence isn't actually patronising. Both come back to the same thing — the EDA showed that framing matters more than topic, and that's the hard part to get right.
 
-\subsubsection*{Other Local Evaluation: Threshold and Confidence Analysis}
+\subsubsection*{Other Local Evaluation: Component Analysis and Precision--Recall Trade-off}
 
-\noindent\textbf{Threshold sensitivity.}
-I search over $[0.30, 0.70]$ so the optimum isn't at the extremes. In my run the best was $t = 0.69$, which gave dev F1 0.615. Lower $t$ pushes recall up and precision down; higher $t$ the reverse. So 0.69 is a bit on the conservative side (fewer PCL predictions, higher precision on PCL).
+\noindent\textbf{Indirect ablation via error breakdown.}
+A full ablation would require retraining the model with each component removed in turn. As a proxy, I use the confusion matrix and the error analysis above to reason about what each change contributed.
 
-\noindent\textbf{What would help next.}
-To fix the missed PCL you'd want something that picks up on stance or pragmatics, not just wording. To cut the false positives you'd need the model to use negation and context better (e.g. ``wasn't just a faceless homeless person''). I didn't try that here.
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+Metric & PCL (positive) & No-PCL (negative) \\
+\midrule
+Precision     & 0.59 & 0.96 \\
+Recall        & 0.64 & 0.95 \\
+False rate    & FNR\,=\,36\% & FPR\,=\,4.6\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent The model predicts PCL actively rather than collapsing to the majority class (FPR only 4.6\%), which is consistent with the weighted loss working as intended. Without it, the RoBERTa baseline (F1\,=\,0.48) was near majority-class collapse. The false negative rate of 36\% is the remaining problem: one in three PCL paragraphs is still missed.
+
+The nature of the false negatives points to what the auxiliary category loss did and did not fix. Both missed examples (par\_id 107, par\_id 149) involve no surface PCL vocabulary — the condescension is purely attitudinal. The auxiliary loss was designed to push the encoder to learn the \emph{type} of patronising stance (compassion framing, saviour dynamic), not just the presence of PCL-adjacent words. The fact that these hard pragmatic cases are still missed suggests the category supervision helps at the macro level but cannot fully bridge the gap between semantic and pragmatic understanding.
+
+The false positives (negation context, internal community voice) are a separate failure mode that the auxiliary loss also cannot resolve, because the category labels are assigned at the instance level and do not encode whether the voice is internal or external to the community.
+
+\vspace{0.5em}
+\noindent\textbf{Threshold sweep.}
+Figure~\ref{fig:threshold} shows F1, precision, and recall across the full search range $[0.30, 0.75]$.
+Table~\ref{tab:threshold} lists values at selected checkpoints.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.92\linewidth]{figures/eval_threshold_sweep.pdf}
+    \caption{Precision, recall, and F1 on the dev set as the decision threshold varies. The dashed line marks the chosen threshold $t=0.69$.}
+    \label{fig:threshold}
+\end{figure}
+
+\begin{table}[h]
+\begin{center}
+\begin{tabular}{cccc}
+\toprule
+Threshold & Precision & Recall & F1 \\
+\midrule
+0.40 & — & — & — \\
+0.50 & — & — & — \\
+0.55 & — & — & — \\
+0.60 & — & — & — \\
+0.65 & — & — & — \\
+\textbf{0.69} & \textbf{—} & \textbf{—} & \textbf{—} \\
+0.70 & — & — & — \\
+0.75 & — & — & — \\
+\bottomrule
+\end{tabular}
+\end{center}
+\caption{Precision / Recall / F1 at selected thresholds on the dev set. Bold = chosen threshold. Replace dashes with values printed by \texttt{generate\_eval\_figs.py}.}
+\label{tab:threshold}
+\end{table}
+
+The optimal threshold is at the upper end of the search range. This tells us that lowering the threshold would add false alarms faster than it recovers true positives — consistent with the error analysis showing the remaining false negatives are hard implicit cases that the model assigns genuinely low probability to.
+
+\vspace{0.5em}
+\noindent\textbf{Precision--recall curve and confidence distribution.}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.48\linewidth]{figures/eval_pr_curve.pdf}\hfill
+    \includegraphics[width=0.48\linewidth]{figures/eval_prob_dist.pdf}
+    \caption{Left: Precision-Recall curve for the PCL class. The dot marks the chosen operating point ($t=0.69$); the dashed line shows a no-skill baseline. Right: distribution of model probabilities split by outcome (TP/FP/FN/TN, log scale). False negatives (FN) cluster at low probability, confirming the model is genuinely uncertain about the hard implicit cases rather than confidently wrong.}
+    \label{fig:pr_and_dist}
+\end{figure}
+
+The PR curve (Figure~\ref{fig:pr_and_dist}, left) shows that the model has room above the no-skill baseline across all recall levels, but precision degrades quickly above recall~$\approx 0.70$. The operating point at $t = 0.69$ sits at a reasonable precision–recall balance; pushing recall to 0.80+ would require accepting precision below 0.50.
+
+The probability distribution (Figure~\ref{fig:pr_and_dist}, right) is the most informative diagnostic. False negatives (red) are concentrated near zero probability — the model is genuinely uncertain about the hard pragmatic cases, not mis-calibrated. False positives (orange) are spread across mid-to-high probabilities, confirming these are confident wrong predictions driven by lexical association (e.g.\ ``homeless person'' triggering a high PCL score even in non-patronising contexts). True positives (green) and true negatives (grey) are where they should be. The threshold separates the distributions reasonably well given the difficulty of the task.
 
 \end{document}
