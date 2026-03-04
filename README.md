@@ -8,7 +8,7 @@ Natural Language Processing Coursework: binary classification of patronising and
 |------|--------|
 | **Best model + predictions** | [**BestModel/**](BestModel/) — [final_model_roberta.pt](BestModel/final_model_roberta.pt) (weights), [dev.txt](BestModel/dev.txt), [test.txt](BestModel/test.txt), [pcl_roberta_improved.ipynb](BestModel/pcl_roberta_improved.ipynb) (notebook copy) |
 | **Training code** | [pcl_roberta_improved.ipynb](pcl_roberta_improved.ipynb) — full pipeline (data load, training, threshold tuning, saving predictions); run from repo root so data paths resolve correctly |
-| **Data** | [**data/**](data/) — `dontpatronizeme_pcl.tsv`, `train_semeval_parids-labels.csv`, `dev_semeval_parids-labels.csv`, `task4_test.tsv` (train/dev split IDs and main data; test set has no labels) |
+| **Data** | [**data/**](data/) — `dontpatronizeme_pcl.tsv`, `train_semeval_parids-labels.csv`, `dev_semeval_parids-labels.csv`, `task4_test.tsv` (train/dev split IDs and main data; test set has no labels) | 
 
 ## What I changed vs the baseline
 
