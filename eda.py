@@ -40,9 +40,7 @@ npcl = df[df['label'] == 0]
 print(f"Train split  |  Total: {len(df)}  |  PCL: {len(pcl)} ({len(pcl)/len(df)*100:.1f}%)  |  No-PCL: {len(npcl)}")
 
 
-# =====================================================================
 # EDA 1: Class distribution + word-count distributions
-# =====================================================================
 pcl_wc  = pcl['word_count']
 npcl_wc = npcl['word_count']
 
@@ -93,9 +91,7 @@ print(f"\nSaved {FIG_DIR}/eda1_class_length.pdf and .png")
 plt.close()
 
 
-# =====================================================================
 # EDA 2: Discriminative bigrams – log-odds ratio
-# =====================================================================
 STOPWORDS = {
     'the','a','an','is','it','in','of','to','and','for','on','at','by','with',
     'was','be','as','are','that','this','its','he','she','they','we','his',
