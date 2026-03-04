@@ -1,4 +1,2 @@
-# Keep notebook outputs in git (disable any global nbstripout/clean filter)
 *.ipynb filter=
-
 BestModel/*.pt filter=lfs diff=lfs merge=lfs -text
