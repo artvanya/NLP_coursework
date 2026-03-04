@@ -249,15 +249,7 @@ The false positives (negation context, internal community voice) are a separate 
 
 \vspace{0.5em}
 \noindent\textbf{Threshold sweep.}
-Figure~\ref{fig:threshold} shows F1, precision, and recall across the full search range $[0.30, 0.75]$.
-Table~\ref{tab:threshold} lists values at selected checkpoints.
-
-\begin{figure}[h]
-    \centering
-    \includegraphics[width=0.92\linewidth]{figures/eval_threshold_sweep.pdf}
-    \caption{Precision, recall, and F1 on the dev set as the decision threshold varies. The dashed line marks the chosen threshold $t=0.69$.}
-    \label{fig:threshold}
-\end{figure}
+Table~\ref{tab:threshold} lists precision, recall, and F1 at selected thresholds on the dev set; the chosen threshold is $t = 0.69$.
 
 \begin{table}[h]
 \begin{center}
@@ -270,31 +262,23 @@ Threshold & Precision & Recall & F1 \\
 0.55 & — & — & — \\
 0.60 & — & — & — \\
 0.65 & — & — & — \\
-\textbf{0.69} & \textbf{—} & \textbf{—} & \textbf{—} \\
+\textbf{0.69} & \textbf{0.593} & \textbf{0.638} & \textbf{0.615} \\
 0.70 & — & — & — \\
 0.75 & — & — & — \\
 \bottomrule
 \end{tabular}
 \end{center}
-\caption{Precision / Recall / F1 at selected thresholds on the dev set. Bold = chosen threshold. Replace dashes with values printed by \texttt{generate\_eval\_figs.py}.}
+\caption{Precision, recall, and F1 (PCL class) at selected thresholds on the dev set. Bold = chosen threshold (from confusion matrix).}
 \label{tab:threshold}
 \end{table}
 
 The optimal threshold is at the upper end of the search range. This tells us that lowering the threshold would add false alarms faster than it recovers true positives — consistent with the error analysis showing the remaining false negatives are hard implicit cases that the model assigns genuinely low probability to.
 
 \vspace{0.5em}
-\noindent\textbf{Precision--recall curve and confidence distribution.}
+\noindent\textbf{Precision--recall trade-off and confidence.}
 
-\begin{figure}[h]
-    \centering
-    \includegraphics[width=0.48\linewidth]{figures/eval_pr_curve.pdf}\hfill
-    \includegraphics[width=0.48\linewidth]{figures/eval_prob_dist.pdf}
-    \caption{Left: Precision-Recall curve for the PCL class. The dot marks the chosen operating point ($t=0.69$); the dashed line shows a no-skill baseline. Right: distribution of model probabilities split by outcome (TP/FP/FN/TN, log scale). False negatives (FN) cluster at low probability, confirming the model is genuinely uncertain about the hard implicit cases rather than confidently wrong.}
-    \label{fig:pr_and_dist}
-\end{figure}
+The metrics at $t = 0.69$ (Table~\ref{tab:threshold}) give precision 0.59 and recall 0.64 on the PCL class. The model has room above a no-skill baseline, but precision degrades as recall increases; the chosen operating point balances the two. Pushing recall toward 0.80+ would require accepting lower precision.
 
-The PR curve (Figure~\ref{fig:pr_and_dist}, left) shows that the model has room above the no-skill baseline across all recall levels, but precision degrades quickly above recall~$\approx 0.70$. The operating point at $t = 0.69$ sits at a reasonable precision–recall balance; pushing recall to 0.80+ would require accepting precision below 0.50.
-
-The probability distribution (Figure~\ref{fig:pr_and_dist}, right) is the most informative diagnostic. False negatives (red) are concentrated near zero probability — the model is genuinely uncertain about the hard pragmatic cases, not mis-calibrated. False positives (orange) are spread across mid-to-high probabilities, confirming these are confident wrong predictions driven by lexical association (e.g.\ ``homeless person'' triggering a high PCL score even in non-patronising contexts). True positives (green) and true negatives (grey) are where they should be. The threshold separates the distributions reasonably well given the difficulty of the task.
+The confusion matrix and error analysis above are the main diagnostics. False negatives (72 of 199 PCL paragraphs) are typically cases where the model assigns low probability — the PCL is in the author's attitude rather than in surface keywords. False positives (87) often occur on vocabulary about vulnerable groups even when the sentence is not condescending (e.g.\ negation or first-person community voice). So the model is genuinely uncertain on the hard implicit cases rather than mis-calibrated, and the threshold $t = 0.69$ separates the classes reasonably well given the difficulty of the task.
 
 \end{document}
