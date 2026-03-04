@@ -17,6 +17,6 @@ I kept RoBERTa-base and added: (1) **class-weighted BCE** (pos_weight 9.55) to h
 ## Replicating the results
 
 1. **Data:** The TSV and CSV files are in the [data/](data/) folder; the notebook reads from there.
-2. **Environment:** Python 3, PyTorch, `transformers`, pandas, scikit-learn, tqdm. Install with e.g. `pip install torch transformers pandas scikit-learn tqdm`.
+2. **Environment:** Python 3, PyTorch, `transformers`, pandas, scikit-learn, tqdm. Install with e.g. `pip install torch transformers pandas scikit-learn tqdm` (or `pip install -r requirements.txt`).
 3. **Training:** Open [pcl_roberta_improved.ipynb](pcl_roberta_improved.ipynb) and run all cells. It will create `BestModel/` (best checkpoint from stage 1, then final model from stage 2), write `dev.txt` and `test.txt`, and print the chosen threshold and dev F1.
 4. **Using the saved model only:** Load `final_model_roberta.pt` into a `RobertaForSequenceClassification.from_pretrained('roberta-base', num_labels=8)` and apply the same tokenization and threshold (e.g. 0.69) as in the notebook. The notebook has the exact prediction loop.
