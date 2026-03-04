@@ -171,7 +171,7 @@ Test set results will appear on the leaderboard after the deadline.
 
 \subsubsection*{Error Analysis}
 
-\noindent\textbf{Confusion matrix (official dev set, 2,094 samples, threshold\,=\,0.69):}
+\noindent\textbf{Confusion matrix (official dev set, 2,094 samples, threshold\,=\,0.69).}
 
 \begin{center}
 \begin{tabular}{lcc}
@@ -184,7 +184,14 @@ Actual PCL    & 72 (FN) & 127 (TP) \\
 \end{tabular}
 \end{center}
 
-\noindent So 72 of 199 PCL paragraphs are missed (recall on PCL 0.64) and 87 No-PCL are predicted as PCL (precision on PCL 0.59). The weighted loss stops the model collapsing to No-PCL; the rest of the errors are mostly borderline cases.
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.45\linewidth]{figures/eval_conf_matrix.pdf}
+    \caption{Confusion matrix for the PCL class on the official dev set at threshold $t=0.69$.}
+    \label{fig:conf_matrix}
+\end{figure}
+
+\noindent Taken together, Table~\ref{tab:threshold} and Figure~\ref{fig:conf_matrix} show that 72 of 199 PCL paragraphs are missed (recall on PCL 0.64) and 87 No-PCL are predicted as PCL (precision on PCL 0.59). The weighted loss stops the model collapsing to No-PCL; the rest of the errors are mostly borderline cases.
 
 \vspace{0.5em}
 \noindent\textbf{False negatives — PCL the model missed.}
@@ -249,7 +256,7 @@ The false positives (negation context, internal community voice) are a separate 
 
 \vspace{0.5em}
 \noindent\textbf{Threshold sweep.}
-Table~\ref{tab:threshold} lists precision, recall, and F1 at selected thresholds on the dev set; the chosen threshold is $t = 0.69$.
+Table~\ref{tab:threshold} and Figure~\ref{fig:threshold} summarise how performance changes as the decision threshold moves across the search range $[0.30, 0.75]$; the chosen threshold is $t = 0.69$.
 
 \begin{table}[h]
 \begin{center}
@@ -272,13 +279,28 @@ Threshold & Precision & Recall & F1 \\
 \label{tab:threshold}
 \end{table}
 
-The optimal threshold is at the upper end of the search range. This tells us that lowering the threshold would add false alarms faster than it recovers true positives — consistent with the error analysis showing the remaining false negatives are hard implicit cases that the model assigns genuinely low probability to.
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.92\linewidth]{figures/eval_threshold_sweep.pdf}
+    \caption{Precision, recall, and F1 on the dev set as the decision threshold varies. The dashed line marks the chosen threshold $t=0.69$.}
+    \label{fig:threshold}
+\end{figure}
+
+The optimal threshold is at the upper end of the search range. The F1 curve is fairly flat around 0.69, but lowering the threshold much further would add false alarms faster than it recovers true positives — consistent with the error analysis showing the remaining false negatives are hard implicit cases that the model assigns genuinely low probability to.
 
 \vspace{0.5em}
 \noindent\textbf{Precision--recall trade-off and confidence.}
 
-The metrics at $t = 0.69$ (Table~\ref{tab:threshold}) give precision 0.59 and recall 0.64 on the PCL class. The model has room above a no-skill baseline, but precision degrades as recall increases; the chosen operating point balances the two. Pushing recall toward 0.80+ would require accepting lower precision.
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.48\linewidth]{figures/eval_pr_curve.pdf}\hfill
+    \includegraphics[width=0.48\linewidth]{figures/eval_prob_dist.pdf}
+    \caption{Left: Precision--Recall curve for the PCL class. The dot marks the chosen operating point ($t=0.69$); the dashed line shows a no-skill baseline. Right: distribution of model probabilities split by outcome (TP/FP/FN/TN, log scale).}
+    \label{fig:pr_and_dist}
+\end{figure}
 
-The confusion matrix and error analysis above are the main diagnostics. False negatives (72 of 199 PCL paragraphs) are typically cases where the model assigns low probability — the PCL is in the author's attitude rather than in surface keywords. False positives (87) often occur on vocabulary about vulnerable groups even when the sentence is not condescending (e.g.\ negation or first-person community voice). So the model is genuinely uncertain on the hard implicit cases rather than mis-calibrated, and the threshold $t = 0.69$ separates the classes reasonably well given the difficulty of the task.
+The metrics at $t = 0.69$ (Table~\ref{tab:threshold}) give precision 0.59 and recall 0.64 on the PCL class. The PR curve in Figure~\ref{fig:pr_and_dist} (left) shows that the model has room above the no-skill baseline across most recall values, but precision degrades steadily as recall increases; the chosen operating point balances the two. Pushing recall toward 0.80+ would require accepting precision well below 0.50.
+
+The probability distribution in Figure~\ref{fig:pr_and_dist} (right) is consistent with the qualitative error analysis. False negatives (red) cluster near zero probability — the model is genuinely uncertain about the hard pragmatic cases rather than confidently wrong. False positives (orange) are concentrated at high probabilities, driven by strong lexical cues about vulnerable groups even when the sentence is not patronising (e.g.\ negation or first-person community voice). True positives (green) and true negatives (grey) sit at the expected ends of the spectrum. Overall, the threshold $t = 0.69$ separates the classes as well as we can reasonably hope for on this task.
 
 \end{document}
